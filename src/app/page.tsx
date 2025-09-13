@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Play, Square, ChevronDown } from "lucide-react";
 
 const LANGUAGES = [
@@ -104,9 +104,17 @@ export default function CodeEditor() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isClient, setIsClient] = useState(false);
   const [isMonacoLoaded, setIsMonacoLoaded] = useState(false);
+
+  // Draggable panes state
+  const [leftPaneWidth, setLeftPaneWidth] = useState(50); // percentage
+  const [rightPaneInputHeight, setRightPaneInputHeight] = useState(33); // percentage of right pane
+  const [isDraggingVertical, setIsDraggingVertical] = useState(false);
+  const [isDraggingHorizontal, setIsDraggingHorizontal] = useState(false);
+
   const codeEditorRef = useRef<HTMLDivElement>(null);
   const monacoEditorRef = useRef<MonacoEditor | null>(null);
   const inputTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Handle client-side hydration and Monaco loading
   useEffect(() => {
@@ -195,6 +203,78 @@ export default function CodeEditor() {
     }
   }, [selectedLanguage, code]);
 
+  // Vertical drag handling (between left and right panes)
+  const handleVerticalMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDraggingVertical(true);
+  }, []);
+
+  const handleVerticalMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDraggingVertical || !containerRef.current) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const newLeftWidth = ((e.clientX - rect.left) / rect.width) * 100;
+      setLeftPaneWidth(Math.max(20, Math.min(80, newLeftWidth)));
+    },
+    [isDraggingVertical],
+  );
+
+  const handleVerticalMouseUp = useCallback(() => {
+    setIsDraggingVertical(false);
+  }, []);
+
+  // Horizontal drag handling (between input and output in right pane)
+  const handleHorizontalMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDraggingHorizontal(true);
+  }, []);
+
+  const handleHorizontalMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDraggingHorizontal || !containerRef.current) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const headerHeight = 72; // Approximate header height
+      const rightPaneTop = rect.top + headerHeight;
+      const rightPaneHeight = rect.height - headerHeight;
+      const newInputHeight =
+        ((e.clientY - rightPaneTop) / rightPaneHeight) * 100;
+      setRightPaneInputHeight(Math.max(20, Math.min(80, newInputHeight)));
+    },
+    [isDraggingHorizontal],
+  );
+
+  const handleHorizontalMouseUp = useCallback(() => {
+    setIsDraggingHorizontal(false);
+  }, []);
+
+  // Mouse event listeners
+  useEffect(() => {
+    if (isDraggingVertical) {
+      document.addEventListener("mousemove", handleVerticalMouseMove);
+      document.addEventListener("mouseup", handleVerticalMouseUp);
+    }
+    if (isDraggingHorizontal) {
+      document.addEventListener("mousemove", handleHorizontalMouseMove);
+      document.addEventListener("mouseup", handleHorizontalMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleVerticalMouseMove);
+      document.removeEventListener("mouseup", handleVerticalMouseUp);
+      document.removeEventListener("mousemove", handleHorizontalMouseMove);
+      document.removeEventListener("mouseup", handleHorizontalMouseUp);
+    };
+  }, [
+    isDraggingVertical,
+    isDraggingHorizontal,
+    handleVerticalMouseMove,
+    handleVerticalMouseUp,
+    handleHorizontalMouseMove,
+    handleHorizontalMouseUp,
+  ]);
+
   const handleLanguageChange = (language: (typeof LANGUAGES)[0]) => {
     setSelectedLanguage(language);
     setCode(DEFAULT_CODE[language.id as keyof typeof DEFAULT_CODE] || "");
@@ -259,11 +339,12 @@ export default function CodeEditor() {
 
   return (
     <div
-      className={`h-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} font-sans`}
+      ref={containerRef}
+      className={`h-screen flex flex-col ${isDarkMode ? "bg-black" : "bg-gray-50"} font-sans select-none`}
     >
       {/* Header */}
       <header
-        className={`border-b px-6 py-4 ${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} shadow-sm`}
+        className={`border-b px-6 py-4 ${isDarkMode ? "bg-neutral-900 border-neutral-800" : "bg-white border-gray-200"} shadow-sm`}
       >
         <div className="flex items-center justify-between max-w-full">
           <div className="flex items-center space-x-3">
@@ -280,7 +361,7 @@ export default function CodeEditor() {
               onClick={toggleTheme}
               className={`px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm shadow-sm ${
                 isDarkMode
-                  ? "bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600"
+                  ? "bg-neutral-800 hover:bg-neutral-700 text-gray-200 border border-neutral-700"
                   : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
               }`}
             >
@@ -293,7 +374,7 @@ export default function CodeEditor() {
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm shadow-sm min-w-[140px] ${
                   isDarkMode
-                    ? "bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600"
+                    ? "bg-neutral-800 hover:bg-neutral-700 text-gray-200 border border-neutral-700"
                     : "bg-white hover:bg-gray-50 text-gray-700 border border-gray-300"
                 }`}
               >
@@ -307,7 +388,7 @@ export default function CodeEditor() {
                 <div
                   className={`absolute top-full mt-2 right-0 border rounded-lg shadow-xl py-2 min-w-[200px] z-20 ${
                     isDarkMode
-                      ? "bg-gray-800 border-gray-600"
+                      ? "bg-neutral-900 border-neutral-700"
                       : "bg-white border-gray-200"
                   }`}
                 >
@@ -321,7 +402,7 @@ export default function CodeEditor() {
                             ? "bg-blue-900 text-blue-200"
                             : "bg-blue-50 text-blue-700"
                           : isDarkMode
-                            ? "text-gray-300 hover:bg-gray-700"
+                            ? "text-gray-300 hover:bg-neutral-800"
                             : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
@@ -367,16 +448,15 @@ export default function CodeEditor() {
       <div className="flex-1 flex min-h-0">
         {/* Left Pane - Code Editor */}
         <div
-          className={`flex-1 flex flex-col border-r transition-colors duration-300 ${
-            isDarkMode
-              ? "bg-gray-800 border-gray-600"
-              : "bg-white border-gray-200"
+          className={`flex flex-col transition-colors duration-300 ${
+            isDarkMode ? "bg-neutral-900" : "bg-white"
           }`}
+          style={{ width: `${leftPaneWidth}%` }}
         >
           <div
             className={`px-4 py-3 border-b transition-colors duration-300 ${
               isDarkMode
-                ? "bg-gray-750 border-gray-600"
+                ? "bg-neutral-800 border-neutral-700"
                 : "bg-gray-50 border-gray-200"
             }`}
           >
@@ -405,20 +485,32 @@ export default function CodeEditor() {
           </div>
         </div>
 
+        {/* Vertical Resizer */}
+        <div
+          className={`w-1 cursor-col-resize transition-colors duration-200 hover:bg-blue-500 ${
+            isDarkMode ? "bg-neutral-700" : "bg-gray-300"
+          } ${isDraggingVertical ? "bg-blue-500" : ""}`}
+          onMouseDown={handleVerticalMouseDown}
+        />
+
         {/* Right Pane - Output and Input */}
-        <div className="flex-1 flex flex-col min-h-0">
+        <div
+          className="flex flex-col min-h-0"
+          style={{ width: `${100 - leftPaneWidth}%` }}
+        >
           {/* Input Section */}
           <div
-            className={`h-1/3 border-b flex flex-col transition-colors duration-300 ${
+            className={`flex flex-col border-b transition-colors duration-300 ${
               isDarkMode
-                ? "bg-gray-800 border-gray-600"
+                ? "bg-neutral-900 border-neutral-700"
                 : "bg-white border-gray-200"
             }`}
+            style={{ height: `${rightPaneInputHeight}%` }}
           >
             <div
               className={`px-4 py-3 border-b transition-colors duration-300 ${
                 isDarkMode
-                  ? "bg-gray-750 border-gray-600"
+                  ? "bg-neutral-800 border-neutral-700"
                   : "bg-gray-50 border-gray-200"
               }`}
             >
@@ -451,16 +543,25 @@ export default function CodeEditor() {
             </div>
           </div>
 
+          {/* Horizontal Resizer */}
+          <div
+            className={`h-1 cursor-row-resize transition-colors duration-200 hover:bg-blue-500 ${
+              isDarkMode ? "bg-neutral-700" : "bg-gray-300"
+            } ${isDraggingHorizontal ? "bg-blue-500" : ""}`}
+            onMouseDown={handleHorizontalMouseDown}
+          />
+
           {/* Output Section */}
           <div
-            className={`flex-1 flex flex-col transition-colors duration-300 ${
-              isDarkMode ? "bg-gray-900" : "bg-gray-50"
+            className={`flex flex-col transition-colors duration-300 ${
+              isDarkMode ? "bg-black" : "bg-gray-50"
             }`}
+            style={{ height: `${100 - rightPaneInputHeight}%` }}
           >
             <div
               className={`px-4 py-3 border-b transition-colors duration-300 ${
                 isDarkMode
-                  ? "bg-gray-800 border-gray-700"
+                  ? "bg-neutral-900 border-neutral-800"
                   : "bg-gray-100 border-gray-200"
               }`}
             >
