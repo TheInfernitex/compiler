@@ -116,6 +116,20 @@ export default function CodeEditor() {
   const inputTextareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullScreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+        setIsFullScreen(false);
+      }
+    }
+  };
+
   // Handle client-side hydration and Monaco loading
   useEffect(() => {
     setIsClient(true);
@@ -355,7 +369,19 @@ export default function CodeEditor() {
             </h1>
           </div>
 
-          <div className="flex items-center space-x-6">
+          <div className="flex items-center gap-x-2">
+            {/* Fullscreen Button */}
+            <button
+              onClick={toggleFullScreen}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 shadow-sm ${
+                isDarkMode
+                  ? "bg-neutral-800 hover:bg-neutral-700 text-gray-200 border border-neutral-700"
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
+              }`}
+            >
+              {isFullScreen ? "⛶" : "⛶"}
+            </button>
+
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
@@ -365,14 +391,14 @@ export default function CodeEditor() {
                   : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
               }`}
             >
-              {isDarkMode ? "☀️ Light" : "🌙 Dark"}
+              {isDarkMode ? "☀️" : "🌙"}
             </button>
 
             {/* Language Selector */}
-            <div className="relative">
+            <div className="relative justify-center items-center">
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm shadow-sm min-w-[140px] ${
+                className={`flex items-center justify-center space-x-3 px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm shadow-sm min-w-[120px] ${
                   isDarkMode
                     ? "bg-neutral-800 hover:bg-neutral-700 text-gray-200 border border-neutral-700"
                     : "bg-white hover:bg-gray-50 text-gray-700 border border-gray-300"
