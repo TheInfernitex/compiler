@@ -1,5 +1,5 @@
 "use client";
-
+import Image from "next/image";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Play, Square, ChevronDown } from "lucide-react";
 
@@ -347,11 +347,11 @@ export default function CodeEditor() {
         className={`border-b px-6 py-4 ${isDarkMode ? "bg-neutral-900 border-neutral-800" : "bg-white border-gray-200"} shadow-sm`}
       >
         <div className="flex items-center justify-between max-w-full">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center justify-center space-x-6 ml-10">
             <h1
-              className={`text-2xl font-semibold tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}
+              className={`text-1xl font-semibold tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}
             >
-              Code-itor
+              Coditor
             </h1>
           </div>
 
