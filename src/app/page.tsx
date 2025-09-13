@@ -554,7 +554,7 @@ export default function CodeEditor() {
           {/* Output Section */}
           <div
             className={`flex flex-col transition-colors duration-300 ${
-              isDarkMode ? "bg-black" : "bg-gray-50"
+              isDarkMode ? "bg-[#0d0d0d]" : "bg-gray-50"
             }`}
             style={{ height: `${100 - rightPaneInputHeight}%` }}
           >
