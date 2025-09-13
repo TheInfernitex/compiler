@@ -626,13 +626,7 @@ export default function CodeEditor() {
                   letterSpacing: "0.025em",
                 }}
               >
-                {output || (
-                  <span
-                    className={`italic ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}
-                  >
-                    Output will appear here after running your code...
-                  </span>
-                )}
+                {output}
               </pre>
             </div>
           </div>
