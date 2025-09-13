@@ -61,7 +61,7 @@ export default function CodeEditor() {
   const [input, setInput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [isClient, setIsClient] = useState(false);
   const codeTextareaRef = useRef<HTMLTextAreaElement>(null);
   const inputTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -143,21 +143,18 @@ export default function CodeEditor() {
       >
         <div className="flex items-center justify-between max-w-full">
           <div className="flex items-center space-x-3">
-            <div
-              className={`w-3 h-3 rounded-full ${isDarkMode ? "bg-blue-500" : "bg-blue-600"}`}
-            ></div>
             <h1
               className={`text-2xl font-semibold tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}
             >
-              Code Editor
+              Code-itor
             </h1>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-40">
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className={`px-4 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm shadow-sm ${
+              className={`px-6 py-2.5 mr-20 rounded-lg transition-all duration-200 font-medium text-sm shadow-sm ${
                 isDarkMode
                   ? "bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600"
                   : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
@@ -260,17 +257,10 @@ export default function CodeEditor() {
             }`}
           >
             <h2
-              className={`text-sm font-semibold uppercase tracking-wider transition-colors duration-300 ${
-                isDarkMode ? "text-gray-300" : "text-gray-600"
-              }`}
-            >
-              Code Editor
-            </h2>
-            <p
-              className={`text-xs mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+              className={`text-sm font-semibold mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
             >
               {selectedLanguage.name} {selectedLanguage.version}
-            </p>
+            </h2>
           </div>
           <div className="flex-1 p-0">
             <textarea
@@ -318,11 +308,6 @@ export default function CodeEditor() {
               >
                 Program Input
               </h2>
-              <p
-                className={`text-xs mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-              >
-                Data to pass to your program via stdin
-              </p>
             </div>
             <div className="flex-1 p-0">
               <textarea
