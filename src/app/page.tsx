@@ -54,6 +54,46 @@ echo "Hello, World!\\n";
 ?>`,
 };
 
+// Monaco language mappings
+const MONACO_LANGUAGE_MAP: { [key: string]: string } = {
+  javascript: "javascript",
+  python: "python",
+  java: "java",
+  cpp: "cpp",
+  c: "c",
+  rust: "rust",
+  go: "go",
+  php: "php",
+};
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+interface MonacoEditor {
+  getValue: () => string;
+  setValue: (value: string) => void;
+  onDidChangeModelContent: (callback: () => void) => void;
+  getModel: () => any;
+  dispose: () => void;
+}
+
+interface MonacoInstance {
+  editor: {
+    create: (container: HTMLElement, options: any) => MonacoEditor;
+    setTheme: (theme: string) => void;
+    setModelLanguage: (model: any, language: string) => void;
+  };
+}
+
+declare global {
+  interface Window {
+    monaco: MonacoInstance;
+    require: {
+      config: (config: { paths: { vs: string } }) => void;
+      (deps: string[], callback: () => void): void;
+    };
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export default function CodeEditor() {
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0]);
   const [code, setCode] = useState(DEFAULT_CODE.javascript);
@@ -63,13 +103,97 @@ export default function CodeEditor() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isClient, setIsClient] = useState(false);
-  const codeTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isMonacoLoaded, setIsMonacoLoaded] = useState(false);
+  const codeEditorRef = useRef<HTMLDivElement>(null);
+  const monacoEditorRef = useRef<MonacoEditor | null>(null);
   const inputTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Handle client-side hydration
+  // Handle client-side hydration and Monaco loading
   useEffect(() => {
     setIsClient(true);
+
+    // Load Monaco Editor
+    const script = document.createElement("script");
+    script.src =
+      "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js";
+    script.onload = () => {
+      window.require.config({
+        paths: {
+          vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs",
+        },
+      });
+      window.require(["vs/editor/editor.main"], () => {
+        setIsMonacoLoaded(true);
+      });
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
+    };
   }, []);
+
+  // Initialize Monaco Editor
+  useEffect(() => {
+    if (
+      isMonacoLoaded &&
+      isClient &&
+      codeEditorRef.current &&
+      !monacoEditorRef.current
+    ) {
+      const editor = window.monaco.editor.create(codeEditorRef.current, {
+        value: code,
+        language: MONACO_LANGUAGE_MAP[selectedLanguage.id] || "javascript",
+        theme: isDarkMode ? "vs-dark" : "vs",
+        fontSize: 14,
+        lineHeight: 24,
+        fontFamily:
+          '"SF Mono", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace',
+        automaticLayout: true,
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false,
+        wordWrap: "on",
+        lineNumbers: "on",
+        folding: true,
+        selectOnLineNumbers: true,
+        matchBrackets: "always",
+        autoIndent: "full",
+        formatOnPaste: true,
+        formatOnType: true,
+        tabSize: 2,
+        insertSpaces: true,
+      });
+
+      editor.onDidChangeModelContent(() => {
+        setCode(editor.getValue());
+      });
+
+      monacoEditorRef.current = editor;
+    }
+  }, [isMonacoLoaded, isClient]);
+
+  // Update Monaco theme when dark mode changes
+  useEffect(() => {
+    if (monacoEditorRef.current) {
+      window.monaco.editor.setTheme(isDarkMode ? "vs-dark" : "vs");
+    }
+  }, [isDarkMode]);
+
+  // Update Monaco language and code when language changes
+  useEffect(() => {
+    if (monacoEditorRef.current) {
+      const model = monacoEditorRef.current.getModel();
+      if (model) {
+        window.monaco.editor.setModelLanguage(
+          model,
+          MONACO_LANGUAGE_MAP[selectedLanguage.id] || "javascript",
+        );
+        monacoEditorRef.current.setValue(code);
+      }
+    }
+  }, [selectedLanguage, code]);
 
   const handleLanguageChange = (language: (typeof LANGUAGES)[0]) => {
     setSelectedLanguage(language);
@@ -139,7 +263,7 @@ export default function CodeEditor() {
     >
       {/* Header */}
       <header
-        className={`border-b px-8 py-5 ${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} shadow-sm`}
+        className={`border-b px-6 py-4 ${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} shadow-sm`}
       >
         <div className="flex items-center justify-between max-w-full">
           <div className="flex items-center space-x-3">
@@ -150,11 +274,11 @@ export default function CodeEditor() {
             </h1>
           </div>
 
-          <div className="flex items-center space-x-40">
+          <div className="flex items-center space-x-6">
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className={`px-6 py-2.5 mr-20 rounded-lg transition-all duration-200 font-medium text-sm shadow-sm ${
+              className={`px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm shadow-sm ${
                 isDarkMode
                   ? "bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600"
                   : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
@@ -167,7 +291,7 @@ export default function CodeEditor() {
             <div className="relative">
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className={`flex items-center space-x-3 px-5 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm shadow-sm min-w-[140px] ${
+                className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm shadow-sm min-w-[140px] ${
                   isDarkMode
                     ? "bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600"
                     : "bg-white hover:bg-gray-50 text-gray-700 border border-gray-300"
@@ -217,7 +341,7 @@ export default function CodeEditor() {
             <button
               onClick={isRunning ? stopExecution : runCode}
               disabled={!code.trim() && !isRunning}
-              className={`flex items-center space-x-2.5 px-6 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 shadow-sm min-w-[100px] justify-center ${
+              className={`flex items-center space-x-2 px-5 py-2 rounded-lg font-semibold text-sm transition-all duration-200 shadow-sm min-w-[110px] justify-center ${
                 isRunning
                   ? "bg-red-500 hover:bg-red-600 text-white shadow-red-200"
                   : "bg-green-500 hover:bg-green-600 text-white disabled:bg-gray-300 disabled:cursor-not-allowed shadow-green-200"
@@ -250,37 +374,34 @@ export default function CodeEditor() {
           }`}
         >
           <div
-            className={`px-6 py-4 border-b transition-colors duration-300 ${
+            className={`px-4 py-3 border-b transition-colors duration-300 ${
               isDarkMode
                 ? "bg-gray-750 border-gray-600"
                 : "bg-gray-50 border-gray-200"
             }`}
           >
             <h2
-              className={`text-sm font-semibold mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+              className={`text-sm font-semibold ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
             >
               {selectedLanguage.name} {selectedLanguage.version}
             </h2>
           </div>
-          <div className="flex-1 p-0">
-            <textarea
-              ref={codeTextareaRef}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder={`Write your ${selectedLanguage.name} code here...`}
-              className={`w-full h-full resize-none border-0 outline-none font-mono text-sm leading-7 p-6 bg-transparent transition-colors duration-300 ${
-                isDarkMode
-                  ? "text-gray-100 placeholder-gray-500"
-                  : "text-gray-800 placeholder-gray-400"
-              }`}
-              style={{
-                fontFamily:
-                  '"SF Mono", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace',
-                letterSpacing: "0.025em",
-                tabSize: 2,
-              }}
-              spellCheck={false}
-            />
+          <div className="flex-1 relative">
+            {!isMonacoLoaded ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div
+                  className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                >
+                  Loading editor...
+                </div>
+              </div>
+            ) : (
+              <div
+                ref={codeEditorRef}
+                className="w-full h-full"
+                style={{ minHeight: "100%" }}
+              />
+            )}
           </div>
         </div>
 
@@ -295,7 +416,7 @@ export default function CodeEditor() {
             }`}
           >
             <div
-              className={`px-6 py-4 border-b transition-colors duration-300 ${
+              className={`px-4 py-3 border-b transition-colors duration-300 ${
                 isDarkMode
                   ? "bg-gray-750 border-gray-600"
                   : "bg-gray-50 border-gray-200"
@@ -315,7 +436,7 @@ export default function CodeEditor() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Enter program input here..."
-                className={`w-full h-full resize-none border-0 outline-none font-mono text-sm leading-6 p-6 bg-transparent transition-colors duration-300 ${
+                className={`w-full h-full resize-none border-0 outline-none font-mono text-sm leading-6 p-4 bg-transparent transition-colors duration-300 ${
                   isDarkMode
                     ? "text-gray-100 placeholder-gray-500"
                     : "text-gray-800 placeholder-gray-400"
@@ -337,7 +458,7 @@ export default function CodeEditor() {
             }`}
           >
             <div
-              className={`px-6 py-4 border-b transition-colors duration-300 ${
+              className={`px-4 py-3 border-b transition-colors duration-300 ${
                 isDarkMode
                   ? "bg-gray-800 border-gray-700"
                   : "bg-gray-100 border-gray-200"
@@ -356,7 +477,7 @@ export default function CodeEditor() {
                 Results from your program execution
               </p>
             </div>
-            <div className="flex-1 p-6 overflow-auto">
+            <div className="flex-1 p-4 overflow-auto">
               <pre
                 className={`text-sm font-mono leading-6 whitespace-pre-wrap transition-colors duration-300 ${
                   output.startsWith("Error:") ||
