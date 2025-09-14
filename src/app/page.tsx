@@ -116,6 +116,9 @@ export default function CodeEditor() {
   const inputTextareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Add a ref to track if we're programmatically updating the editor
+  const isUpdatingFromState = useRef(false);
+
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   const toggleFullScreen = () => {
@@ -189,7 +192,10 @@ export default function CodeEditor() {
       });
 
       editor.onDidChangeModelContent(() => {
-        setCode(editor.getValue());
+        // Only update state if we're not programmatically updating
+        if (!isUpdatingFromState.current) {
+          setCode(editor.getValue());
+        }
       });
 
       monacoEditorRef.current = editor;
@@ -203,7 +209,7 @@ export default function CodeEditor() {
     }
   }, [isDarkMode]);
 
-  // Update Monaco language and code when language changes
+  // Update Monaco language when language changes (but NOT when code changes from typing)
   useEffect(() => {
     if (monacoEditorRef.current) {
       const model = monacoEditorRef.current.getModel();
@@ -212,10 +218,9 @@ export default function CodeEditor() {
           model,
           MONACO_LANGUAGE_MAP[selectedLanguage.id] || "javascript",
         );
-        monacoEditorRef.current.setValue(code);
       }
     }
-  }, [selectedLanguage, code]);
+  }, [selectedLanguage.id]); // Only depend on selectedLanguage.id, not code
 
   // Vertical drag handling (between left and right panes)
   const handleVerticalMouseDown = useCallback((e: React.MouseEvent) => {
@@ -291,7 +296,17 @@ export default function CodeEditor() {
 
   const handleLanguageChange = (language: (typeof LANGUAGES)[0]) => {
     setSelectedLanguage(language);
-    setCode(DEFAULT_CODE[language.id as keyof typeof DEFAULT_CODE] || "");
+    const newCode =
+      DEFAULT_CODE[language.id as keyof typeof DEFAULT_CODE] || "";
+
+    // Update the editor content programmatically
+    if (monacoEditorRef.current) {
+      isUpdatingFromState.current = true;
+      monacoEditorRef.current.setValue(newCode);
+      isUpdatingFromState.current = false;
+    }
+
+    setCode(newCode);
     setOutput("");
     setInput("");
     setIsDropdownOpen(false);
