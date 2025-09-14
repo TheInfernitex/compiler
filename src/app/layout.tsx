@@ -6,9 +6,9 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Code Editor - Run Code Online",
+  title: "Coditor",
   description:
-    "A beautiful, minimalist online code editor with multi-language support",
+    "A minimalist online code editor and compiler with multi-language support",
 };
 
 export default function RootLayout({
