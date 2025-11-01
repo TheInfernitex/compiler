@@ -1,7 +1,14 @@
 "use client";
 import Image from "next/image";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Square, ChevronDown } from "lucide-react";
+import {
+  Play,
+  Square,
+  ChevronDown,
+  Copy,
+  RotateCcw,
+  Check,
+} from "lucide-react";
 
 const LANGUAGES = [
   { id: "javascript", name: "JavaScript", version: "18.15.0" },
@@ -120,6 +127,9 @@ export default function CodeEditor() {
   const isUpdatingFromState = useRef(false);
 
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [inputCopied, setInputCopied] = useState(false);
+  const [outputCopied, setOutputCopied] = useState(false);
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
@@ -357,6 +367,60 @@ export default function CodeEditor() {
     setIsDarkMode(!isDarkMode);
   };
 
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy code:", err);
+    }
+  };
+
+  const resetCode = () => {
+    const newCode = "";
+
+    if (monacoEditorRef.current) {
+      isUpdatingFromState.current = true;
+      monacoEditorRef.current.setValue(newCode);
+      isUpdatingFromState.current = false;
+    }
+
+    setCode(newCode);
+    setOutput("");
+  };
+
+  const copyInput = async () => {
+    try {
+      await navigator.clipboard.writeText(input);
+      setInputCopied(true);
+      setTimeout(() => setInputCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy input:", err);
+    }
+  };
+
+  const resetInput = () => {
+    setInput("");
+    if (inputTextareaRef.current) {
+      inputTextareaRef.current.focus();
+    }
+  };
+
+  const copyOutput = async () => {
+    try {
+      await navigator.clipboard.writeText(output);
+      setOutputCopied(true);
+      setTimeout(() => setOutputCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy output:", err);
+    }
+  };
+
+  const resetOutput = () => {
+    setOutput("");
+  };
+
   // Show a loading state until client-side hydration is complete
   if (!isClient) {
     return (
@@ -495,7 +559,7 @@ export default function CodeEditor() {
           style={{ width: `${leftPaneWidth}%` }}
         >
           <div
-            className={`px-4 py-3 border-b transition-colors duration-300 ${
+            className={`px-4 py-3 border-b transition-colors duration-300 flex items-center justify-between ${
               isDarkMode
                 ? "bg-neutral-800 border-neutral-700"
                 : "bg-gray-50 border-gray-200"
@@ -506,6 +570,34 @@ export default function CodeEditor() {
             >
               {selectedLanguage.name} {selectedLanguage.version}
             </h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={copyCode}
+                className={`p-1.5 rounded transition-all duration-200 ${
+                  isDarkMode
+                    ? "hover:bg-neutral-700 text-gray-400 hover:text-gray-200"
+                    : "hover:bg-gray-200 text-gray-500 hover:text-gray-700"
+                }`}
+                title="Copy code"
+              >
+                {codeCopied ? (
+                  <Check className="w-4 h-4 text-green-500" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </button>
+              <button
+                onClick={resetCode}
+                className={`p-1.5 rounded transition-all duration-200 ${
+                  isDarkMode
+                    ? "hover:bg-neutral-700 text-gray-400 hover:text-gray-200"
+                    : "hover:bg-gray-200 text-gray-500 hover:text-gray-700"
+                }`}
+                title="Reset to default"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div className="flex-1 relative">
             {!isMonacoLoaded ? (
@@ -549,7 +641,7 @@ export default function CodeEditor() {
             style={{ height: `${rightPaneInputHeight}%` }}
           >
             <div
-              className={`px-4 py-3 border-b transition-colors duration-300 ${
+              className={`px-4 py-3 border-b transition-colors duration-300 flex items-center justify-between ${
                 isDarkMode
                   ? "bg-neutral-800 border-neutral-700"
                   : "bg-gray-50 border-gray-200"
@@ -562,6 +654,34 @@ export default function CodeEditor() {
               >
                 Program Input
               </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={copyInput}
+                  className={`p-1.5 rounded transition-all duration-200 ${
+                    isDarkMode
+                      ? "hover:bg-neutral-700 text-gray-400 hover:text-gray-200"
+                      : "hover:bg-gray-200 text-gray-500 hover:text-gray-700"
+                  }`}
+                  title="Copy input"
+                >
+                  {inputCopied ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+                <button
+                  onClick={resetInput}
+                  className={`p-1.5 rounded transition-all duration-200 ${
+                    isDarkMode
+                      ? "hover:bg-neutral-700 text-gray-400 hover:text-gray-200"
+                      : "hover:bg-gray-200 text-gray-500 hover:text-gray-700"
+                  }`}
+                  title="Clear input"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             <div className="flex-1 p-0">
               <textarea
@@ -600,24 +720,56 @@ export default function CodeEditor() {
             style={{ height: `${100 - rightPaneInputHeight}%` }}
           >
             <div
-              className={`px-4 py-3 border-b transition-colors duration-300 ${
+              className={`px-4 py-3 border-b transition-colors duration-300 flex items-center justify-between ${
                 isDarkMode
                   ? "bg-neutral-900 border-neutral-800"
                   : "bg-gray-100 border-gray-200"
               }`}
             >
-              <h2
-                className={`text-sm font-semibold uppercase tracking-wider transition-colors duration-300 ${
-                  isDarkMode ? "text-gray-300" : "text-gray-600"
-                }`}
-              >
-                Program Output
-              </h2>
-              <p
-                className={`text-xs mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-              >
-                Results from your program execution
-              </p>
+              <div>
+                <h2
+                  className={`text-sm font-semibold uppercase tracking-wider transition-colors duration-300 ${
+                    isDarkMode ? "text-gray-300" : "text-gray-600"
+                  }`}
+                >
+                  Program Output
+                </h2>
+                <p
+                  className={`text-xs mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                >
+                  Results from your program execution
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={copyOutput}
+                  disabled={!output}
+                  className={`p-1.5 rounded transition-all duration-200 ${
+                    isDarkMode
+                      ? "hover:bg-neutral-800 text-gray-400 hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                      : "hover:bg-gray-200 text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                  }`}
+                  title="Copy output"
+                >
+                  {outputCopied ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+                <button
+                  onClick={resetOutput}
+                  disabled={!output}
+                  className={`p-1.5 rounded transition-all duration-200 ${
+                    isDarkMode
+                      ? "hover:bg-neutral-800 text-gray-400 hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                      : "hover:bg-gray-200 text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                  }`}
+                  title="Clear output"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             <div className="flex-1 p-4 overflow-auto">
               <pre
